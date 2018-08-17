@@ -1,0 +1,5 @@
+<?php
+function queenslaw_podcast_uninstall() {
+  \Drupal::configFactory()->getEditable('queenslaw_podcast.settings')->delete();
+  // todo: delete podcast image and directory on uninstall
+}

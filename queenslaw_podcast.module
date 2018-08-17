@@ -1,0 +1,232 @@
+<?php
+
+define('QUEENSLAW_PODCAST_DEFAULT_PATH', '/podcast/feed');
+
+use Drupal\Core\Url;
+use Drupal\file\Entity\File;
+use Drupal\node\Entity\Node;
+use Spatie\ArrayToXml\ArrayToXml;
+
+function _queenslaw_podcast_content() {
+  $settings = \Drupal::config('queenslaw_podcast.settings');
+  $site_path = Url::fromRoute('<front>', [], ['absolute' => TRUE])->toString();
+  $podcast_path = _queenslaw_podcast_path();
+  $podcast_path = _queenslaw_podcast_absolute_path($podcast_path, $site_path);
+  $image = '';
+  if ($image_fid = $settings->get('image')) {
+    $image_uri = File::load($image_fid)->getFileUri();
+    $image = file_create_url($image_uri);
+  }
+  $all_categories = _queenslaw_podcast_categories();
+  $source_data = [
+    'category' => 'Society & Culture',
+    'date' => date('r'),
+    'description' => $settings->get('description'),
+    'email' => \Drupal::config('system.site')->get('mail'),
+    'encoding' => 'UTF-8',
+    'explicit' => 'clean',
+    'generator' => 'Drupal ' . \DRUPAL::VERSION,
+    'image' => $image,
+    'language' => 'en-US',
+    'podcast_path' => $podcast_path,
+    'site_path' => $site_path,
+    'subtitle' => $settings->get('subtitle'),
+    'title' => $settings->get('title'),
+    'type' => 'episodic',
+    'update_period' => 'hourly',
+    'update_frequency' => '1',
+    'xmlns' => [
+      'atom' => 'http://www.w3.org/2005/Atom',
+      'content' => 'http://purl.org/rss/1.0/modules/content/',
+      'dc' => 'http://purl.org/dc/elements/1.1/',
+      'googleplay' => 'http://www.google.com/schemas/play-podcasts/1.0',
+      'itunes' => 'http://www.itunes.com/dtds/podcast-1.0.dtd',
+      'rawvoice' => 'http://www.rawvoice.com/rawvoiceRssModule/',
+      'slash' => 'http://purl.org/rss/1.0/modules/slash/',
+      'sy' => 'http://purl.org/rss/1.0/modules/syndication/',
+      'wfw' => 'http://wellformedweb.org/CommentAPI/',
+    ],
+  ];
+  $xml = [
+    'channel' => [
+      'atom:link' => [
+        '_attributes' => [
+          'href' => $source_data['podcast_path'],
+          'rel' => 'self',
+          'type' => 'application/rss+xml',
+        ],
+      ],
+      'description' => $source_data['description'],
+      'generator' => $source_data['generator'],
+      'googleplay:description' => $source_data['description'],
+      'image' => [
+        'link' => $source_data['site_path'],
+        'title' => $source_data['title'],
+        'url' => $source_data['image'],
+      ],
+      'itunes:author' => $source_data['title'],
+      'itunes:category' => [
+        '_attributes' => [
+          'text' => $source_data['category'],
+        ],
+      ],
+      'itunes:explicit' => $source_data['explicit'],
+      'itunes:image' => $source_data['image'],
+      'itunes:owner' => [
+        'itunes:email' => $source_data['email'],
+        'itunes:name' => $source_data['title'],
+      ],
+      'itunes:subtitle' => $source_data['subtitle'],
+      'itunes:summary' => $source_data['description'],
+      'itunes:type' => $source_data['type'],
+      'language' => $source_data['language'],
+      'lastBuildDate' => $source_data['date'],
+      'link' => $source_data['site_path'],
+      'managingEditor' => "{$source_data['email']} ({$source_data['title']})",
+      'sy:updatePeriod' => $source_data['update_period'],
+      'sy:updateFrequency' => $source_data['update_frequency'],
+      'title' => $source_data['title'],
+    ],
+  ];
+  $items = [];
+  if ($source_url = \Drupal::config('queenslaw_podcast.settings')->get('source_url')) {
+    $source_url = _queenslaw_podcast_absolute_path($source_url, $site_path);
+    $stream_context = _queenslaw_podcast_stream_context();
+    if ($json = file_get_contents($source_url, FALSE, $stream_context)) {
+      if ($data = json_decode($json, TRUE)) {
+        foreach ($data as $source_item) {
+          if (isset($source_item['nid']) && ($node = Node::load($source_item['nid']))) {
+            $nid = $node->id();
+            $description = '';
+            $content = '';
+            if ($node->hasField('body')) {
+              $description = $node->get('body')->summary;
+              $content = $node->get('body')->value;
+            }
+            $item = [
+              'title' => $node->getTitle(),
+              'path' => $node->toUrl()->setAbsolute()->toString(),
+              'pubDate' => date('r', $node->getCreatedTime()),
+              'guid' => [
+                '_attributes' => [
+                  'isPermaLink' => 'true',
+                ],
+                '_value' => "{$site_path}node/{$nid}",
+              ],
+              'description' => $description,
+              'content:encoded' => [
+                '_cdata' => $content,
+              ],
+              'itunes:subtitle' => $description,
+              'itunes:summary' => $description,
+              'itunes:author' => $source_data['title'],
+              'itunes:image' => [
+                '_attributes' => [
+                  'href' => $source_data['image'],
+                ],
+              ],
+              'itunes:explicit' => $source_data['explicit'],
+            ];
+            if ($node->hasField('field_audio')) {
+              if ($audio = $node->get('field_audio')->getValue()) {
+                if ($audio = array_shift($audio)) {
+                  if (isset($audio['target_id'])) {
+                    if ($audio_file = File::load($audio['target_id'])) {
+                      $audio_uri = $audio_file->getFileUri();
+                      $audio_url = file_create_url($audio_uri);
+                      $item['enclusure'] = [
+                        '_attributes' => [
+                          'url' => $audio_url,
+                          'length' => $audio_file->getSize(),
+                          'type' => $audio_file->getMimeType(),
+                        ],
+                      ];
+                      if ($audio_realpath = \Drupal::service('file_system')->realpath($audio_uri)) {
+                        $getID3 = new getID3;
+                        $audio_info = $getID3->analyze($audio_realpath);
+                        $item['itunes:duration'] = $audio_info['playtime_string'];
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if ($node->hasField('field_category')) {
+              $categories = [];
+              $source_categories = $node->get('field_category')->getValue();
+              foreach ($source_categories as $source_category) {
+                if (isset($source_category['target_id']) && (array_key_exists($source_category['target_id'], $all_categories))) {
+                  $target_id = $source_category['target_id'];
+                  $categories[] = [
+                    '_cdata' => $all_categories[$target_id],
+                  ];
+                }
+              }
+              $item['category'] = $categories;
+            }
+            $items[] = $item;
+          }
+        }
+      }
+    }
+  }
+  $xml['channel']['item'][] = $items;
+  $parameters = [
+    'rootElementName' => 'rss',
+    '_attributes' => [
+      'version' => '2.0',
+    ],
+  ];
+  foreach ($source_data['xmlns'] as $key => $value) $parameters['_attributes']["xmlns:{$key}"] = $value;
+  $content = ArrayToXml::convert($xml, $parameters, TRUE, $source_data['encoding']);
+  return $content;
+}
+
+function _queenslaw_podcast_stream_context() {
+  $stream_context = NULL;
+  if (($username = \Drupal::config('queenslaw_podcast.settings')->get('username')) && ($username) && ($password = \Drupal::config('queenslaw_podcast.settings')->get('password')) && ($password)) {
+    $credentials = base64_encode("{$username}:{$password}");
+    $stream_options = [
+      'http'=> [
+        'method' => 'GET',
+        'header' => "Authorization: Basic {$credentials}",
+      ],
+    ];
+    $stream_context = stream_context_create($stream_options);
+  }
+  return $stream_context;
+}
+
+function _queenslaw_podcast_categories() {
+  $categories = [];
+  if ($terms = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadTree('categories')) {
+    foreach ($terms as $term) {
+      $tid = $term->tid;
+      $categories[$tid] = $term->name;
+    }
+  }
+  return $categories;
+}
+
+function _queenslaw_podcast_path() {
+  $path = QUEENSLAW_PODCAST_DEFAULT_PATH;
+  if (\Drupal::config('queenslaw_podcast.settings')->get('path')) $path = \Drupal::config('queenslaw_podcast.settings')->get('path');
+  return $path;
+}
+
+function _queenslaw_podcast_absolute_path($path, $site_path) {
+  if ((substr($path, 0, 4) != 'http') && (substr($path, 0, 2) != '//')) {
+    if (strpos($path, '/') === 0) $path = substr($path, 1);
+    $path = $site_path . $path;
+  }
+  return $path;
+}
+
+function _queenslaw_podcast_upload_validators() {
+  $maximum_image_size = 1024 * 1024 * 2;
+  $upload_validators = [
+    'file_validate_extensions' => ['gif jpeg jpg png'],
+    'file_validate_size' => [$maximum_image_size],
+  ];
+  return $upload_validators;
+}

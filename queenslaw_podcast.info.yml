@@ -1,0 +1,8 @@
+name: "Queen's University Faculty of Law Podcast"
+description: "Podcast functionality for Queen's University Faculty of Law websites."
+package: "Queen's University Faculty of Law"
+type: module
+core: 8.x
+configure: queenslaw_podcast.admin
+dependencies:
+  - path

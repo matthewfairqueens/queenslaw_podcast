@@ -1,0 +1,19 @@
+{
+  "name": "drupal/queenslaw_podcast",
+  "description": "Podcast functionality for Queen's University Faculty of Law websites.",
+  "type": "drupal-custom-module",
+  "homepage": "http://law.queensu.ca/",
+  "authors": [
+    {
+      "name": "Noah St. Amand",
+      "email": "noah@purelyinteractive.ca",
+      "role": "Maintainer"
+    }
+  ],
+  "license": "GPL-2.0+",
+  "minimum-stability": "dev",
+  "require": {
+    "spatie/array-to-xml": "~2.7",
+    "james-heinrich/getid3": "~1.9"
+  }
+}

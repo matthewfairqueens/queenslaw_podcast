@@ -1,0 +1,5 @@
+queenslaw_podcast.admin:
+  title: "Queen's Law podcast"
+  description: "Manage Queen's Law podcast settings"
+  parent: system.admin_config_services
+  route_name: queenslaw_podcast.admin

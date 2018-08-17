@@ -1,0 +1,9 @@
+route_callbacks:
+  - '\Drupal\queenslaw_podcast\Routing\QueensLawPodcastRouting::routing'
+queenslaw_podcast.admin:
+  path: '/admin/config/services/queenslaw-podcast'
+  defaults:
+    _form: 'Drupal\queenslaw_podcast\Form\QueensLawPodcastAdminForm'
+    _title: "Queen's Law Podcast Settings"
+  requirements:
+    _permission: 'manage queenslaw_podcast'
