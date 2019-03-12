@@ -114,7 +114,7 @@ class QueensLawPodcastAdminForm extends ConfigFormBase {
         '#required' => FALSE,
       ],
     ];
-    return $form;
+    return parent::buildForm($form, $form_state);
   }
 
   /**
