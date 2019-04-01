@@ -138,7 +138,7 @@ function _queenslaw_podcast_content() {
                     if ($audio_file = File::load($audio['target_id'])) {
                       $audio_uri = $audio_file->getFileUri();
                       $audio_url = file_create_url($audio_uri);
-                      $item['enclusure'] = [
+                      $item['enclosure'] = [
                         '_attributes' => [
                           'url' => str_replace("http://","https://",$audio_url),
                           'length' => $audio_file->getSize(),
