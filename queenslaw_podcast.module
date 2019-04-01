@@ -1,6 +1,6 @@
 <?php
 
-define('QUEENSLAW_PODCAST_DEFAULT_PATH', '/podcast/feed');
+define('QUEENSLAW_PODCAST_DEFAULT_PATH', '/feed/podcast');
 
 use Drupal\Core\Url;
 use Drupal\file\Entity\File;
@@ -60,9 +60,9 @@ function _queenslaw_podcast_content() {
       'generator' => $source_data['generator'],
       'googleplay:description' => $source_data['description'],
       'image' => [
-        'link' => $source_data['site_path'],
+        'link' => str_replace("http://","https://",$source_data['site_path']),
         'title' => $source_data['title'],
-        'url' => $source_data['image'],
+        'url' => str_replace("http://","https://",$source_data['image']),
       ],
       'itunes:author' => $source_data['title'],
       'itunes:category' => [
@@ -71,7 +71,11 @@ function _queenslaw_podcast_content() {
         ],
       ],
       'itunes:explicit' => $source_data['explicit'],
-      'itunes:image' => $source_data['image'],
+      'itunes:image' => [
+        '_attributes' => [
+          'href' => str_replace("http://","https://",$source_data['image']),
+        ],
+      ],
       'itunes:owner' => [
         'itunes:email' => $source_data['email'],
         'itunes:name' => $source_data['title'],
@@ -81,7 +85,7 @@ function _queenslaw_podcast_content() {
       'itunes:type' => $source_data['type'],
       'language' => $source_data['language'],
       'lastBuildDate' => $source_data['date'],
-      'link' => $source_data['site_path'],
+      'link' => str_replace("http://","https://",$source_data['site_path']),
       'managingEditor' => "{$source_data['email']} ({$source_data['title']})",
       'sy:updatePeriod' => $source_data['update_period'],
       'sy:updateFrequency' => $source_data['update_frequency'],
@@ -105,13 +109,13 @@ function _queenslaw_podcast_content() {
             }
             $item = [
               'title' => $node->getTitle(),
-              'path' => $node->toUrl()->setAbsolute()->toString(),
+              'path' => str_replace("http://","https://",$node->toUrl()->setAbsolute()->toString()),
               'pubDate' => date('r', $node->getCreatedTime()),
               'guid' => [
                 '_attributes' => [
                   'isPermaLink' => 'true',
                 ],
-                '_value' => "{$site_path}node/{$nid}",
+                '_value' => str_replace("http://","https://","{$site_path}node/{$nid}"),
               ],
               'description' => $description,
               'content:encoded' => [
@@ -122,7 +126,7 @@ function _queenslaw_podcast_content() {
               'itunes:author' => $source_data['title'],
               'itunes:image' => [
                 '_attributes' => [
-                  'href' => $source_data['image'],
+                  'href' => str_replace("http://","https://",$source_data['image']),
                 ],
               ],
               'itunes:explicit' => $source_data['explicit'],
@@ -136,7 +140,7 @@ function _queenslaw_podcast_content() {
                       $audio_url = file_create_url($audio_uri);
                       $item['enclusure'] = [
                         '_attributes' => [
-                          'url' => $audio_url,
+                          'url' => str_replace("http://","https://",$audio_url),
                           'length' => $audio_file->getSize(),
                           'type' => $audio_file->getMimeType(),
                         ],
@@ -219,6 +223,7 @@ function _queenslaw_podcast_absolute_path($path, $site_path) {
     if (strpos($path, '/') === 0) $path = substr($path, 1);
     $path = $site_path . $path;
   }
+  $path = str_replace("http://","https://",$path);
   return $path;
 }
 
