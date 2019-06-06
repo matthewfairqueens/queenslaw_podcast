@@ -1,6 +1,6 @@
 <?php
 
-define('QUEENSLAW_PODCAST_DEFAULT_PATH', '/feedtest/podcast');
+define('QUEENSLAW_PODCAST_DEFAULT_PATH', '/feed/podcast');
 
 use Drupal\Core\Url;
 use Drupal\file\Entity\File;
